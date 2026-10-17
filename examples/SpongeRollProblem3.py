@@ -4,8 +4,12 @@ The Full Sponge Roll Problem for the PuLP Modeller
 Authors: Antony Phillips, Dr Stuart Mitchell    2007
 """
 
+from typing import Any
 
-def calculatePatterns(totalRollLength, lenOpts, head):
+
+def calculatePatterns(
+    totalRollLength: int, lenOpts: list[Any | int], head: list[Any | int]
+) -> list[list[int]]:
     """
     Recursively calculates the list of options lists for a cutting stock problem. The input
     'tlist' is a pointer, and will be the output of the function call.
@@ -36,7 +40,9 @@ def calculatePatterns(totalRollLength, lenOpts, head):
     return patterns
 
 
-def makePatterns(totalRollLength, lenOpts):
+def makePatterns(
+    totalRollLength: int, lenOpts: list[int]
+) -> tuple[list[str], list[list[int]], dict[str, int]]:
     """
     Makes the different cutting patterns for a cutting stock problem.
 
@@ -65,9 +71,9 @@ def makePatterns(totalRollLength, lenOpts):
         trim[name] = totalRollLength - ssum
     # The different cutting lengths are printed, and the number of each roll of that length in each
     # pattern is printed below. This is so the user can see what each pattern contains.
-    print("Lens: %s" % lenOpts)
+    print(f"Lens: {lenOpts}")
     for name, pattern in zip(PatternNames, patterns):
-        print(name + "  = %s" % pattern)
+        print(name + f"  = {pattern}")
 
     return (PatternNames, patterns, trim)
 
@@ -105,16 +111,16 @@ rollData = {  # Length Demand SalePrice
 
 # The pattern data  is made into a dictionary so it can be called by patterns["7"]["P3"] for example.
 # This will return the number of rolls of length "7" in pattern "P3"
-patterns = makeDict([PatternNames, LenOpts], patterns, 0)
+patterns_dict = makeDict([PatternNames, LenOpts], patterns, 0)
 
 # The variable 'prob' is created
 prob = LpProblem("Cutting Stock Problem", LpMinimize)
 
 # The problem variables of the number of each pattern to make are created
-pattVars = LpVariable.dicts("Patt", PatternNames, 0, None, LpInteger)
+pattVars = prob.add_variable_dict("Patt", (PatternNames,), 0, None, LpInteger)
 
 # The problem variables of the number of surplus rolls for each length are created
-surplusVars = LpVariable.dicts("Surp", LenOpts, 0, None, LpInteger)
+surplusVars = prob.add_variable_dict("Surp", (LenOpts,), 0, None, LpInteger)
 
 # The objective function is entered: (the total number of large rolls used * the cost of each) - (the value of the surplus stock) - (the value of the trim)
 prob += (
@@ -127,19 +133,20 @@ prob += (
 # The demand minimum constraint is entered
 for j in LenOpts:
     prob += (
-        lpSum([pattVars[i] * patterns[i][j] for i in PatternNames]) - surplusVars[j]
+        lpSum([pattVars[i] * patterns_dict[i][j] for i in PatternNames])
+        - surplusVars[j]
         >= rollDemand[j],
-        "Ensuring enough %s cm rolls" % j,
+        f"Ensuring enough {j} cm rolls",
     )
 
 # The problem data is written to an .lp file
 prob.writeLP("SpongeRollProblem.lp")
 
 # The problem is solved using PuLP's choice of Solver
-prob.solve()
+stats = prob.solve()
 
 # The status of the solution is printed to the screen
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Each of the variables is printed with it's resolved optimum value
 for v in prob.variables():

@@ -22,12 +22,11 @@ def happiness(table):
 # create list of all possible tables
 possible_tables = [tuple(c) for c in pulp.allcombinations(guests, max_table_size)]
 
+seating_model = pulp.LpProblem("Wedding Seating Model", pulp.LpMinimize)
 # create a binary variable to state that a table setting is used
-x = pulp.LpVariable.dicts(
+x = seating_model.add_variable_dict(
     "table", possible_tables, lowBound=0, upBound=1, cat=pulp.LpInteger
 )
-
-seating_model = pulp.LpProblem("Wedding Seating Model", pulp.LpMinimize)
 
 seating_model += sum([happiness(table) * x[table] for table in possible_tables])
 
@@ -41,12 +40,12 @@ seating_model += (
 for guest in guests:
     seating_model += (
         sum([x[table] for table in possible_tables if guest in table]) == 1,
-        "Must_seat_%s" % guest,
+        f"Must_seat_{guest}",
     )
 
 seating_model.solve()
 
-print("The choosen tables are out of a total of %s:" % len(possible_tables))
+print(f"The chosen tables are out of a total of {len(possible_tables)}:")
 for table in possible_tables:
     if x[table].value() == 1.0:
         print(table)

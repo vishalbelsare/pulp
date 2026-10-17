@@ -8,8 +8,9 @@
 # Vladimir I. Norkin, Yuri M. Ermoliev, Andrzej Ruszczynski
 # IIASA, WP-94-021, April 1994 (revised October 1995).
 
-from pulp import *
 from random import *
+
+from pulp import *
 
 C = 50
 B = 500  # Resources available for the two years
@@ -30,14 +31,14 @@ q = [[randint(ai, ai + bi) for ai, bi in ab] for ab in interval]
 # Second year resources
 delta = [[randint(ai, ai + bi) for ai, bi in ab] for ab in interval]
 
-# Variables
-# x : Whether or not to start a project
-x = LpVariable.matrix("x", (N,), 0, 1, LpInteger)
-# y : Whether or not to finish it, in each scenario
-y = LpVariable.matrix("y", (S, N), 0, 1, LpInteger)
-
 # Problem
 lp = LpProblem("Planification", LpMinimize)
+
+# Variables
+# x : Whether or not to start a project
+x = lp.add_variable_matrix("x", (N,), 0, 1, LpInteger)
+# y : Whether or not to finish it, in each scenario
+y = lp.add_variable_matrix("y", (S, N), 0, 1, LpInteger)
 
 # Objective: expected earnings
 lp += lpDot(x, c) - lpDot(q, y) / float(s)

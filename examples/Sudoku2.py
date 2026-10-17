@@ -22,25 +22,25 @@ Boxes = [
 prob = LpProblem("Sudoku Problem")
 
 # The decision variables are created
-choices = LpVariable.dicts("Choice", (VALS, ROWS, COLS), cat="Binary")
+choices = prob.add_variable_dict("Choice", (VALS, ROWS, COLS), 0, 1, LpBinary)
 
 # We do not define an objective function since none is needed
 
 # A constraint ensuring that only one value can be in each square is created
 for r in ROWS:
     for c in COLS:
-        prob += lpSum([choices[v][r][c] for v in VALS]) == 1
+        prob += lpSum([choices[v, r, c] for v in VALS]) == 1
 
 # The row, column and box constraints are added for each value
 for v in VALS:
     for r in ROWS:
-        prob += lpSum([choices[v][r][c] for c in COLS]) == 1
+        prob += lpSum([choices[v, r, c] for c in COLS]) == 1
 
     for c in COLS:
-        prob += lpSum([choices[v][r][c] for r in ROWS]) == 1
+        prob += lpSum([choices[v, r, c] for r in ROWS]) == 1
 
     for b in Boxes:
-        prob += lpSum([choices[v][r][c] for (r, c) in b]) == 1
+        prob += lpSum([choices[v, r, c] for (r, c) in b]) == 1
 
 # The starting numbers are entered as constraints
 input_data = [
@@ -77,8 +77,8 @@ input_data = [
     #    (5, 8, 9)
 ]
 
-for (v, r, c) in input_data:
-    prob += choices[v][r][c] == 1
+for v, r, c in input_data:
+    prob += choices[v, r, c] == 1
 
 # The problem data is written to an .lp file
 prob.writeLP("Sudoku.lp")
@@ -87,18 +87,18 @@ prob.writeLP("Sudoku.lp")
 sudokuout = open("sudokuout.txt", "w")
 
 while True:
-    prob.solve()
+    stats = prob.solve()
     # The status of the solution is printed to the screen
-    print("Status:", LpStatus[prob.status])
-    # The solution is printed if it was deemed "optimal" i.e met the constraints
-    if LpStatus[prob.status] == "Optimal":
+    print("Status:", stats.status_str)
+    # The solution is printed if the solver found one meeting the constraints
+    if stats.has_solution:
         # The solution is written to the sudokuout.txt file
         for r in ROWS:
             if r in [1, 4, 7]:
                 sudokuout.write("+-------+-------+-------+\n")
             for c in COLS:
                 for v in VALS:
-                    if value(choices[v][r][c]) == 1:
+                    if value(choices[v, r, c]) == 1:
                         if c in [1, 4, 7]:
                             sudokuout.write("| ")
                         sudokuout.write(str(v) + " ")
@@ -109,11 +109,11 @@ while True:
         prob += (
             lpSum(
                 [
-                    choices[v][r][c]
+                    choices[v, r, c]
                     for v in VALS
                     for r in ROWS
                     for c in COLS
-                    if value(choices[v][r][c]) == 1
+                    if value(choices[v, r, c]) == 1
                 ]
             )
             <= 80

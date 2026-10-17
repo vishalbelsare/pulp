@@ -4,11 +4,20 @@
 # This example is a PuLP rendition of the todd.mod problem included in the GLPK
 # 4.4 distribution. It's a hard knapsack problem.
 
-# Import PuLP modeler functions
-from pulp import *
-
 # Import math functions
 from math import *
+
+# Import PuLP modeler functions
+from pulp import (
+    LpInteger,
+    LpMaximize,
+    LpMinimize,
+    LpProblem,
+    LpVariable,
+    lpDot,
+    lpSum,
+    value,
+)
 
 # A new LP problem
 prob = LpProblem("test2", LpMaximize)
@@ -19,7 +28,7 @@ n = 15
 k = floor(log(n) / log(2))
 
 # A vector of n binary variables
-x = LpVariable.matrix("x", list(range(n)), 0, 1, LpInteger)
+x = prob.add_variable_matrix("x", (list(range(n)),), 0, 1, LpInteger)
 
 # A vector of weights
 a = [pow(2, k + n + 1) + pow(2, k + n + 1 - j) + 1 for j in range(1, n + 1)]
@@ -35,10 +44,10 @@ prob += weight
 prob += weight <= b
 
 # Resolution
-prob.solve()
+stats = prob.solve()
 
 # Print the status of the solved LP
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Print the value of the variables at the optimum
 for v in prob.variables():

@@ -17,7 +17,7 @@ The following considerations need to be taken into account:
 
 #. Variable names need to be unique. PuLP permits having variable names because it uses an internal code for each one. But we do not export that code. So we identify variables by their name only.
 #. Variables are not exported in a grouped way. This means that if you have several `dictionaries of many variables each` you will end up with a very long list of variables. This can be seen in the Example 2.
-#. Output information is also written to the json format. This means that the status, solution status, the values of variables and shadow prices / reduced costs are exported too. This means that it is possible to export a model that has been solved and then read it again only to see the values of the variables.
+#. Output information is also written to the json format: the values of variables and shadow prices / reduced costs are exported too, so a solved model can be read back to see those values. The solve outcome itself (status, timings, ...) is not part of the model -- it lives on the :class:`~pulp.LpSolveStats` each solve returns, not on the exported model.
 #. For json, we use the base `json` package. But if `ujson` is available, we use that so the import / export can be really fast.
 
 Example 1: json
@@ -28,9 +28,9 @@ A very simple example taken from the internal tests. Imagine the following probl
     from pulp import *
 
     prob = LpProblem("test_export_dict_MIP", LpMinimize)
-    x = LpVariable("x", 0, 4)
-    y = LpVariable("y", -1, 1)
-    z = LpVariable("z", 0, None, LpInteger)
+    x = prob.add_variable("x", 0, 4)
+    y = prob.add_variable("y", -1, 1)
+    z = prob.add_variable("z", 0, None, LpInteger)
     prob += x + 4 * y + 9 * z, "obj"
     prob += x + y <= 5, "c1"
     prob += x + z >= 10, "c2"
@@ -65,9 +65,7 @@ We now have a dictionary with a lot of data::
                                     {'name': 'z', 'value': 9}],
                    'name': 'obj'},
      'parameters': {'name': 'test_export_dict_MIP',
-                    'sense': 1,
-                    'sol_status': 0,
-                    'status': 0},
+                    'sense': 1},
      'sos1': {},
      'sos2': {},
      'variables': [{'cat': 'Continuous',
@@ -124,9 +122,9 @@ The same model::
 
     from pulp import *
     prob = LpProblem("test_export_dict_MIP", LpMinimize)
-    x = LpVariable("x", 0, 4)
-    y = LpVariable("y", -1, 1)
-    z = LpVariable("z", 0, None, LpInteger)
+    x = prob.add_variable("x", 0, 4)
+    y = prob.add_variable("y", -1, 1)
+    z = prob.add_variable("z", 0, None, LpInteger)
     prob += x + 4 * y + 9 * z, "obj"
     prob += x + y <= 5, "c1"
     prob += x + z >= 10, "c2"
@@ -178,13 +176,10 @@ We will use as example the model in :ref:`set-partitioning-problem`::
     possible_tables = [tuple(c) for c in pulp.allcombinations(guests, 
                                             max_table_size)]
 
-    #create a binary variable to state that a table setting is used
-    x = pulp.LpVariable.dicts('table', possible_tables, 
-                                lowBound = 0,
-                                upBound = 1,
-                                cat = pulp.LpInteger)
-
     seating_model = pulp.LpProblem("Wedding_Seating_Model", pulp.LpMinimize)
+    # create a binary variable to state that a table setting is used
+    x = seating_model.add_variable_dict('table', possible_tables,
+                                        lowBound=0, upBound=1, cat=pulp.LpInteger)
 
     seating_model += pulp.lpSum([happiness(table) * x[table] for table in possible_tables])
 

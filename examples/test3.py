@@ -8,9 +8,17 @@
 # The thermal units have a proportional cost and a startup cost.
 # The hydro unit has an initial storage.
 
-from __future__ import print_function
-from pulp import *
 from math import *
+
+from pulp import (
+    LpContinuous,
+    LpInteger,
+    LpMinimize,
+    LpProblem,
+    LpVariable,
+    lpSum,
+    value,
+)
 
 prob = LpProblem("test3", LpMinimize)
 
@@ -50,13 +58,13 @@ costs = [i + 1 for i in unit]
 startupcosts = [100 * (i + 1) for i in unit]
 
 # Production variables for each time step and each thermal unit.
-p = LpVariable.matrix("p", (time, unit), 0)
+p = prob.add_variable_matrix("p", (time, unit), 0, None, LpContinuous)
 for t in time:
     for i in unit:
         p[t][i].upBound = pmax[i]
 
 # State (started/stopped) variables for each time step and each thermal unit
-d = LpVariable.matrix("d", (xtime, unit), 0, 1, LpInteger)
+d = prob.add_variable_matrix("d", (xtime, unit), 0, 1, LpInteger)
 
 # Production constraint relative to the unit state (started/stoped)
 for t in time:
@@ -67,7 +75,7 @@ for t in time:
         prob += p[t][i] >= pmin[i] * d[t][i]
 
 # Startup variables: 1 if the unit will be started next time step
-u = LpVariable.matrix("u", (time, unit), 0)
+u = prob.add_variable_matrix("u", (time, unit), 0, None, LpContinuous)
 
 # Dynamic startup constraints
 # Initialy, all groups are started
@@ -77,7 +85,7 @@ for t in time:
         prob += u[t][i] >= d[t + 1][i] - d[t][i]
 
 # Storage for the hydro plant (must not go below 0)
-s = LpVariable.matrix("s", xtime, 0)
+s = prob.add_variable_matrix("s", (xtime,), 0, None, LpContinuous)
 
 # Initial storage
 s[0] = sini
@@ -104,6 +112,7 @@ prob += ctp + cts
 # Solve the problem
 prob.solve()
 
+assert prob.objective is not None
 print("Minimum total cost:", prob.objective.value())
 
 # Print the results
@@ -114,10 +123,10 @@ print()
 
 for t in time:
     # Demand, hydro storage, hydro production
-    print("%5.1f" % demand[t], "%5.1f" % value(s[t]), "%5.1f" % value(ph[t]), end=" ")
+    print(f"{demand[t]:5.1f}", f"{value(s[t]):5.1f}", f"{value(ph[t]):5.1f}", end=" ")
     for i in unit:
         # Thermal production
-        print("%4.1f" % value(p[t][i]), end=" ")
+        print(f"{value(p[t][i]):4.1f}", end=" ")
         # The state of the unit
         if value(d[t][i]):
             print("+", end=" ")

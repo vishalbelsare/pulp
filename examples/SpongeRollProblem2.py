@@ -35,16 +35,16 @@ trimValue = 0.04
 (rollDemand, surplusPrice) = splitDict(rollData)
 
 # The pattern data is made into a dictionary
-patterns = makeDict([LenOpts, PatternNames], patterns, 0)
-
-# The problem variables of the number of each pattern to make are created
-pattVars = LpVariable.dicts("Patt", PatternNames, 0, None, LpInteger)
-
-# The problem variables of the number of surplus rolls for each length are created
-surplusVars = LpVariable.dicts("Surp", LenOpts, 0, None, LpInteger)
+patterns_dict = makeDict([LenOpts, PatternNames], patterns, 0)
 
 # The variable 'prob' is created
 prob = LpProblem("Cutting Stock Problem", LpMinimize)
+
+# The problem variables of the number of each pattern to make are created
+pattVars = prob.add_variable_dict("Patt", (PatternNames,), 0, None, LpInteger)
+
+# The problem variables of the number of surplus rolls for each length are created
+surplusVars = prob.add_variable_dict("Surp", (LenOpts,), 0, None, LpInteger)
 
 # The objective function is entered: the total number of large rolls used * the fixed cost of each minus the surplus
 # sales and the trim sales
@@ -58,19 +58,20 @@ prob += (
 # The demand minimum constraint is entered
 for i in LenOpts:
     prob += (
-        lpSum([pattVars[j] * patterns[i][j] for j in PatternNames]) - surplusVars[i]
+        lpSum([pattVars[j] * patterns_dict[i][j] for j in PatternNames])
+        - surplusVars[i]
         >= rollDemand[i],
-        "Ensuring enough %s cm rolls" % i,
+        f"Ensuring enough {i} cm rolls",
     )
 
 # The problem data is written to an .lp file
 prob.writeLP("SpongeRollProblem.lp")
 
 # The problem is solved using PuLP's choice of Solver
-prob.solve()
+stats = prob.solve()
 
 # The status of the solution is printed to the screen
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Each of the variables is printed with it's resolved optimum value
 for v in prob.variables():

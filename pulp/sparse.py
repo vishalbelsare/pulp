@@ -1,3 +1,5 @@
+from typing import Generic, TypeVar, cast
+
 # Sparse : Python basic dictionary sparse matrix
 
 # Copyright (c) 2007, Stuart Mitchell (s.mitchell@auckland.ac.nz)
@@ -27,32 +29,41 @@ sparse this module provides basic pure python sparse matrix implementation
 notably this allows the sparse matrix to be output in various formats
 """
 
+T = TypeVar("T")
 
-class Matrix(dict):
+
+class Matrix(Generic[T], dict[tuple[int, int], T]):
     """This is a dictionary based sparse matrix class"""
 
-    def __init__(self, rows, cols):
+    def __init__(self, rows: list[int], cols: list[int]):
         """initialises the class by creating a matrix that will have the given
         rows and columns
         """
-        self.rows = rows
-        self.cols = cols
-        self.rowdict = dict([(row, {}) for row in rows])
-        self.coldict = dict([(col, {}) for col in cols])
+        self.rows: list[int] = rows
+        self.cols: list[int] = cols
+        self.rowdict: dict[int, dict[int, T]] = {row: {} for row in rows}
+        self.coldict: dict[int, dict[int, T]] = {col: {} for col in cols}
 
-    def add(self, row, col, item, colcheck=False, rowcheck=False):
-        if not (rowcheck and row not in self.rows):
-            if not (colcheck and col not in self.cols):
+    def add(
+        self,
+        row: int,
+        col: int,
+        item: T,
+        colcheck: bool = False,
+        rowcheck: bool = False,
+    ) -> None:
+        if not rowcheck or row in self.rows:
+            if not colcheck or col in self.cols:
                 dict.__setitem__(self, (row, col), item)
                 self.rowdict[row][col] = item
                 self.coldict[col][row] = item
             else:
                 print(self.cols)
-                raise RuntimeError("col %s is not in the matrix columns" % col)
+                raise RuntimeError(f"col {col} is not in the matrix columns")
         else:
-            raise RuntimeError("row %s is not in the matrix rows" % row)
+            raise RuntimeError(f"row {row} is not in the matrix rows")
 
-    def addcol(self, col, rowitems):
+    def addcol(self, col: int, rowitems: dict[int, T]) -> None:
         """adds a column"""
         if col in self.cols:
             for row, item in rowitems.items():
@@ -60,12 +71,20 @@ class Matrix(dict):
         else:
             raise RuntimeError("col is not in the matrix columns")
 
-    def get(self, k, d=0):
-        return dict.get(self, k, d)
+    def get(  # ty: ignore[invalid-method-override]
+        self,
+        coords: tuple[int, int],
+        default: T | None = None,
+    ) -> T:
+        if default is None:
+            return dict.get(self, coords, cast(T, 0))
+        return dict.get(self, coords, default)
 
-    def col_based_arrays(self):
+    def col_based_arrays(
+        self,
+    ) -> tuple[int, list[int], list[int], list[int], list[T]]:
         numEls = len(self)
-        elemBase = []
+        elemBase: list[T] = []
         startsBase = []
         indBase = []
         lenBase = []
@@ -74,15 +93,6 @@ class Matrix(dict):
             elemBase.extend(list(self.coldict[col].values()))
             indBase.extend(list(self.coldict[col].keys()))
             lenBase.append(len(elemBase) - startsBase[-1])
+
         startsBase.append(len(elemBase))
         return numEls, startsBase, lenBase, indBase, elemBase
-
-
-if __name__ == "__main__":
-    """unit test"""
-    rows = list(range(10))
-    cols = list(range(50, 60))
-    mat = Matrix(rows, cols)
-    mat.add(1, 52, "item")
-    mat.add(2, 54, "stuff")
-    print(mat.col_based_arrays())

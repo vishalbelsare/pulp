@@ -18,21 +18,24 @@ class Pattern:
     totalRollLength = 20
     lenOpts = ["5", "7", "9"]
 
-    def __init__(self, name, lengths=None):
+    def __init__(self, name: str, lengths: list[int]) -> None:
         self.name = name
         self.lengthsdict = dict(zip(self.lenOpts, lengths))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def trim(self):
+    def trim(self) -> int:
         return Pattern.totalRollLength - sum(
             [int(i) * int(self.lengthsdict[i]) for i in self.lengthsdict]
         )
 
 
-def masterSolve(Patterns, rollData, relax=True):
-
+def masterSolve(
+    Patterns: list[Pattern],
+    rollData: dict[str, list[float | int]],
+    relax: bool = True,
+) -> dict[str, float | None] | tuple[float, dict[str, int]]:
     # The rollData is made into separate dictionaries
     (rollDemand, surplusPrice) = splitDict(rollData)
 
@@ -46,8 +49,10 @@ def masterSolve(Patterns, rollData, relax=True):
         vartype = LpInteger
 
     # The problem variables are created
-    pattVars = LpVariable.dicts("Pattern", Patterns, 0, None, vartype)
-    surplusVars = LpVariable.dicts("Surplus", Pattern.lenOpts, 0, None, vartype)
+    pattVars = prob.add_variable_dict("Pattern", (Patterns,), 0, None, vartype)
+    surplusVars = prob.add_variable_dict(
+        "Surplus", (Pattern.lenOpts,), 0, None, vartype
+    )
 
     # The objective function is entered: (the total number of large rolls used * the cost of each) -
     # (the value of the surplus stock) - (the value of the trim)
@@ -62,7 +67,7 @@ def masterSolve(Patterns, rollData, relax=True):
         prob += (
             lpSum([pattVars[i] * i.lengthsdict[j] for i in Patterns]) - surplusVars[j]
             >= rollDemand[j],
-            "Min%s" % j,
+            f"Min{j}",
         )
 
     # The problem is solved
@@ -75,37 +80,50 @@ def masterSolve(Patterns, rollData, relax=True):
         # Creates a dual variables list
         duals = {}
         for name, i in zip(["Min5", "Min7", "Min9"], Pattern.lenOpts):
-            duals[i] = prob.constraints[name].pi
+            for c in prob.constraints():
+                if c.name == name:
+                    duals[i] = c.pi
+                    break
+            else:
+                raise KeyError(name)
 
         return duals
 
     else:
         # Creates a dictionary of the variables and their values
-        varsdict = {}
+        varsdict: dict[str, int] = {}
         for v in prob.variables():
-            varsdict[v.name] = v.varValue
+            if v.varValue is None:
+                varsdict[v.name] = 0
+            else:
+                varsdict[v.name] = int(v.varValue)
 
         # The number of rolls of each length in each pattern is printed
-        for i in Patterns:
-            print(i, " = %s" % [i.lengthsdict[j] for j in Pattern.lenOpts])
+        for p in Patterns:
+            print(p, " = %s" % [p.lengthsdict[j] for j in Pattern.lenOpts])
+        my_value: float = value(prob.objective)
+        return my_value, varsdict
 
-        return value(prob.objective), varsdict
 
-
-def subSolve(Patterns, duals):
-
+def subSolve(
+    Patterns: list[Pattern], duals: dict[str, float | None]
+) -> tuple[list[Pattern], bool]:
     # The variable 'prob' is created
     prob = LpProblem("SubProb", LpMinimize)
 
     # The problem variables are created
-    _vars = LpVariable.dicts("Roll Length", Pattern.lenOpts, 0, None, LpInteger)
+    _vars = prob.add_variable_dict(
+        "Roll_Length_%s", (Pattern.lenOpts,), 0, None, LpInteger
+    )
 
-    trim = LpVariable("Trim", 0, None, LpInteger)
+    trim = prob.add_variable("Trim", 0, None, LpInteger)
 
     # The objective function is entered: the reduced cost of a new pattern
-    prob += (Pattern.cost - Pattern.trimValue * trim) - lpSum(
-        [_vars[i] * duals[i] for i in Pattern.lenOpts]
-    ), "Objective"
+    prob += (
+        (Pattern.cost - Pattern.trimValue * trim)
+        - lpSum([_vars[i] * duals[i] for i in Pattern.lenOpts]),
+        "Objective",
+    )
 
     # The conservation of length constraint is entered
     prob += (
@@ -121,17 +139,20 @@ def subSolve(Patterns, duals):
     prob.roundSolution()
 
     # The new pattern is written to a dictionary
-    varsdict = {}
+    varsdict: dict[str, int] = {}
     newPattern = {}
     for v in prob.variables():
-        varsdict[v.name] = v.varValue
+        if v.varValue is None:
+            varsdict[v.name] = 0
+        else:
+            varsdict[v.name] = int(v.varValue)
     for i, j in zip(
         Pattern.lenOpts, ["Roll_Length_5", "Roll_Length_7", "Roll_Length_9"]
     ):
-        newPattern[i] = int(varsdict[j])
+        newPattern[i] = varsdict[j]
 
     # Check if there are more patterns which would reduce the master LP objective function further
-    if value(prob.objective) < -(10 ** -5):
+    if value(prob.objective) < -(10**-5):
         morePatterns = True  # continue adding patterns
         Patterns += [
             Pattern("P" + str(len(Patterns)), [newPattern[i] for i in ["5", "7", "9"]])

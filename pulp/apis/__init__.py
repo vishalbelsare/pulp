@@ -1,15 +1,69 @@
-from .coin_api import *
-from .cplex_api import *
-from .gurobi_api import *
-from .glpk_api import *
-from .choco_api import *
-from .mipcl_api import *
-from .mosek_api import *
-from .scip_api import *
-from .xpress_api import *
-from .core import *
+import json
+import warnings
+from typing import Type
 
-_all_solvers = [
+from .choco import CHOCO_CMD
+from .coin import COIN_CMD, COINMP_DLL, CYLP, YAPOSIB
+from .copt import COPT, COPT_CMD, COPT_DLL
+from .core import LpSolver, LpSolver_CMD, PulpSolverError
+from .cplex import CPLEX, CPLEX_CMD, CPLEX_PY
+from .cuopt import CUOPT
+from .glpk import GLPK, GLPK_CMD, PYGLPK
+from .gurobi import GUROBI, GUROBI_CMD
+from .highs import HiGHS, HiGHS_CMD
+from .mipcl import MIPCL_CMD
+from .mosek import MOSEK
+from .ortools import CPSAT
+from .sas import SAS94, SASCAS, SASsolver
+from .scip import FSCIP, FSCIP_CMD, SCIP, SCIP_CMD, SCIP_PY
+from .xpress import XPRESS, XPRESS_CMD, XPRESS_PY
+
+__all__ = [
+    "CHOCO_CMD",
+    "COIN_CMD",
+    "COINMP_DLL",
+    "CYLP",
+    "YAPOSIB",
+    "COPT",
+    "COPT_CMD",
+    "COPT_DLL",
+    "LpSolver",
+    "LpSolver_CMD",
+    "PulpSolverError",
+    "CPLEX",
+    "CPLEX_CMD",
+    "CPLEX_PY",
+    "CUOPT",
+    "GLPK",
+    "GLPK_CMD",
+    "PYGLPK",
+    "GUROBI",
+    "GUROBI_CMD",
+    "HiGHS",
+    "HiGHS_CMD",
+    "MIPCL_CMD",
+    "MOSEK",
+    "CPSAT",
+    "SAS94",
+    "SASCAS",
+    "SASsolver",
+    "FSCIP",
+    "FSCIP_CMD",
+    "SCIP",
+    "SCIP_CMD",
+    "SCIP_PY",
+    "XPRESS",
+    "XPRESS_CMD",
+    "XPRESS_PY",
+    "LpSolverDefault",
+    "getSolver",
+    "getSolverFromDict",
+    "getSolverFromJson",
+    "listSolvers",
+]
+
+_all_solvers: list[Type[LpSolver]] = [
+    CYLP,
     GLPK_CMD,
     PYGLPK,
     CPLEX_CMD,
@@ -17,71 +71,46 @@ _all_solvers = [
     GUROBI,
     GUROBI_CMD,
     MOSEK,
+    CPSAT,
     XPRESS,
-    PULP_CBC_CMD,
+    XPRESS_CMD,
+    XPRESS_PY,
     COIN_CMD,
     COINMP_DLL,
     CHOCO_CMD,
     MIPCL_CMD,
     SCIP_CMD,
+    FSCIP_CMD,
+    SCIP_PY,
+    HiGHS,
+    HiGHS_CMD,
+    COPT,
+    COPT_DLL,
+    COPT_CMD,
+    SAS94,
+    SASCAS,
+    CUOPT,
 ]
 
-import json
-
-# Default solver selection
-if PULP_CBC_CMD().available():
-    LpSolverDefault = PULP_CBC_CMD()
+LpSolverDefault: COIN_CMD | GLPK_CMD | None = None
+# Default solver selection: CBC via COIN_CMD (cbcbox extra or ``cbc`` on PATH), else GLPK.
+if COIN_CMD().available():
+    LpSolverDefault = COIN_CMD()
 elif GLPK_CMD().available():
     LpSolverDefault = GLPK_CMD()
-elif COIN_CMD().available():
-    LpSolverDefault = COIN_CMD()
-else:
-    LpSolverDefault = None
 
 
-def setConfigInformation(**keywords):
-    """
-    set the data in the configuration file
-    at the moment will only edit things in [locations]
-    the keyword value pairs come from the keywords dictionary
-    """
-    # TODO: extend if we ever add another section in the config file
-    # read the old configuration
-    config = Parser()
-    config.read(config_filename)
-    # set the new keys
-    for (key, val) in keywords.items():
-        config.set("locations", key, val)
-    # write the new configuration
-    fp = open(config_filename, "w")
-    config.write(fp)
-    fp.close()
+def addSolver(*solvers: Type[LpSolver]) -> None:
+    for new in solvers:
+        for old in _all_solvers:
+            if new.name == old.name:
+                warnings.warn(
+                    f"Adding solver {new.name} ({new.__name__}) shadows existing solver ({old.__name__})"
+                )
+    _all_solvers.extend(solvers)
 
 
-def configSolvers():
-    """
-    Configure the path the the solvers on the command line
-
-    Designed to configure the file locations of the solvers from the
-    command line after installation
-    """
-    configlist = [
-        (cplex_dll_path, "cplexpath", "CPLEX: "),
-        (coinMP_path, "coinmppath", "CoinMP dll (windows only): "),
-    ]
-    print(
-        "Please type the full path including filename and extension \n"
-        + "for each solver available"
-    )
-    configdict = {}
-    for (default, key, msg) in configlist:
-        value = input(msg + "[" + str(default) + "]")
-        if value:
-            configdict[key] = value
-    setConfigInformation(**configdict)
-
-
-def getSolver(solver, *args, **kwargs):
+def getSolver(solver: str, *args, **kwargs) -> LpSolver:
     """
     Instantiates a solver from its name
 
@@ -101,7 +130,7 @@ def getSolver(solver, *args, **kwargs):
         )
 
 
-def getSolverFromDict(data):
+def getSolverFromDict(data: dict[str, str | bool | float | int]) -> LpSolver:
     """
     Instantiates a solver from a dictionary with its data
 
@@ -111,13 +140,15 @@ def getSolverFromDict(data):
     :raises PulpSolverError: if the dictionary does not have the "solver" key
     :rtype: LpSolver
     """
+    data = dict(data)
     solver = data.pop("solver", None)
     if solver is None:
         raise PulpSolverError("The json file has no solver attribute.")
+    assert isinstance(solver, str)
     return getSolver(solver, **data)
 
 
-def getSolverFromJson(filename):
+def getSolverFromJson(filename: str) -> LpSolver:
     """
     Instantiates a solver from a json file with its data
 
@@ -125,12 +156,12 @@ def getSolverFromJson(filename):
     :return: a solver of type :py:class:`LpSolver`
     :rtype: LpSolver
     """
-    with open(filename, "r") as f:
+    with open(filename) as f:
         data = json.load(f)
     return getSolverFromDict(data)
 
 
-def listSolvers(onlyAvailable=False):
+def listSolvers(onlyAvailable: bool = False) -> list[str]:
     """
     List the names of all the existing solvers in PuLP
 
@@ -138,14 +169,10 @@ def listSolvers(onlyAvailable=False):
     :return: list of solver names
     :rtype: list
     """
-    solvers = [s() for s in _all_solvers]
-    if onlyAvailable:
-        return [solver.name for solver in solvers if solver.available()]
-    return [solver.name for solver in solvers]
-
-
-# DEPRECATED aliases:
-get_solver = getSolver
-get_solver_from_json = getSolverFromJson
-get_solver_from_dict = getSolverFromDict
-list_solvers = listSolvers
+    result = []
+    for s in _all_solvers:
+        solver = s(msg=False)
+        if (not onlyAvailable) or solver.available():
+            result.append(solver.name)
+        del solver
+    return result

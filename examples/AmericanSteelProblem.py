@@ -71,15 +71,15 @@ arcData = {  #      ARC                Cost Min Max
 (supply, demand) = splitDict(nodeData)
 (costs, mins, maxs) = splitDict(arcData)
 
-# Creates the boundless Variables as Integers
-vars = LpVariable.dicts("Route", Arcs, None, None, LpInteger)
+# Creates the 'prob' variable to contain the problem data
+prob = LpProblem("American Steel Problem", LpMinimize)
+
+# Creates the boundless Variables as Integers (per-arc bounds set below)
+vars = prob.add_variable_dict("Route_%s_%s", (Arcs,), None, None, LpInteger)
 
 # Creates the upper and lower bounds on the variables
 for a in Arcs:
     vars[a].bounds(mins[a], maxs[a])
-
-# Creates the 'prob' variable to contain the problem data
-prob = LpProblem("American Steel Problem", LpMinimize)
 
 # Creates the objective function
 prob += lpSum([vars[a] * costs[a] for a in Arcs]), "Total Cost of Transport"
@@ -87,18 +87,21 @@ prob += lpSum([vars[a] * costs[a] for a in Arcs]), "Total Cost of Transport"
 # Creates all problem constraints - this ensures the amount going into each node is at least equal to the amount leaving
 for n in Nodes:
     prob += (
-        supply[n] + lpSum([vars[(i, j)] for (i, j) in Arcs if j == n])
-        >= demand[n] + lpSum([vars[(i, j)] for (i, j) in Arcs if i == n])
-    ), "Steel Flow Conservation in Node %s" % n
+        (
+            supply[n] + lpSum([vars[(i, j)] for (i, j) in Arcs if j == n])
+            >= demand[n] + lpSum([vars[(i, j)] for (i, j) in Arcs if i == n])
+        ),
+        f"Steel Flow Conservation in Node {n}",
+    )
 
 # The problem data is written to an .lp file
 prob.writeLP("AmericanSteelProblem.lp")
 
 # The problem is solved using PuLP's choice of Solver
-prob.solve()
+stats = prob.solve()
 
 # The status of the solution is printed to the screen
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Each of the variables is printed with it's resolved optimum value
 for v in prob.variables():

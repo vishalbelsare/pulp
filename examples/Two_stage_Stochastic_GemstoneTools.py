@@ -1,4 +1,4 @@
-"""
+r"""
 Author: Louis Luangkesorn <lugerpitt@gmail.com> 2019
 https://github.com/lluang
 
@@ -57,20 +57,20 @@ steel_dict = dict(zip(products, steel))
 molding_dict = dict(zip(products, molding))
 assembly_dict = dict(zip(products, assembly))
 
-# Create variables and parameters as dictionaries
-production_vars = pulp.LpVariable.dicts(
-    "production", (scenarios, products), lowBound=0, cat="Continuous"
-)
-steelpurchase = pulp.LpVariable("steelpurchase", lowBound=0, cat="Continuous")
-
 # Create the 'gemstoneprob' variable to specify
 gemstoneprob = pulp.LpProblem("The Gemstone Tool Problem", pulp.LpMaximize)
+
+# Create variables and parameters as dictionaries
+production_vars = gemstoneprob.add_variable_dict(
+    "production", (scenarios, products), 0, None, pulp.LpContinuous
+)
+steelpurchase = gemstoneprob.add_variable("steelpurchase", 0, None, pulp.LpContinuous)
 
 # The objective function is added to 'gemstoneprob' first
 gemstoneprob += (
     pulp.lpSum(
         [
-            pscenario[j] * (price_dict[(j, i)] * production_vars[j][i])
+            pscenario[j] * (price_dict[(j, i)] * production_vars[j, i])
             for (j, i) in production
         ]
         - steelpurchase * steelprice
@@ -79,18 +79,26 @@ gemstoneprob += (
 )
 
 for j in scenarios:
-    gemstoneprob += pulp.lpSum(
-        [steel_dict[i] * production_vars[j][i] for i in products]
-    ) - steelpurchase <= 0, ("Steel capacity" + str(j))
-    gemstoneprob += pulp.lpSum(
-        [molding_dict[i] * production_vars[j][i] for i in products]
-    ) <= capmolding, ("molding capacity" + str(j))
-    gemstoneprob += pulp.lpSum(
-        [assembly_dict[i] * production_vars[j][i] for i in products]
-    ) <= capassembly[j], ("assembly capacity" + str(j))
+    gemstoneprob += (
+        pulp.lpSum([steel_dict[i] * production_vars[j, i] for i in products])
+        - steelpurchase
+        <= 0,
+        ("Steel capacity" + str(j)),
+    )
+    gemstoneprob += (
+        pulp.lpSum([molding_dict[i] * production_vars[j, i] for i in products])
+        <= capmolding,
+        ("molding capacity" + str(j)),
+    )
+    gemstoneprob += (
+        pulp.lpSum([assembly_dict[i] * production_vars[j, i] for i in products])
+        <= capassembly[j],
+        ("assembly capacity" + str(j)),
+    )
     for i in products:
-        gemstoneprob += production_vars[j][i] <= capacity_dict[i], (
-            "capacity " + str(i) + str(j)
+        gemstoneprob += (
+            production_vars[j, i] <= capacity_dict[i],
+            ("capacity " + str(i) + str(j)),
         )
 
 # Print problem
@@ -99,16 +107,16 @@ print(gemstoneprob)
 # The problem data is written to an .lp file
 gemstoneprob.writeLP("gemstoneprob.lp")
 # The problem is solved using PuLP's choice of Solver
-gemstoneprob.solve()
+stats = gemstoneprob.solve()
 # The status of the solution is printed to the screen
-print("Status:", pulp.LpStatus[gemstoneprob.status])
+print("Status:", stats.status_str)
 
 # OUTPUT
 
 # Each of the variables is printed with it's resolved optimum value
 for v in gemstoneprob.variables():
     print(v.name, "=", v.varValue)
-production = [v.varValue for v in gemstoneprob.variables()]
+result = [v.varValue for v in gemstoneprob.variables()]
 
 # The optimised objective function value is printed to the console
 print("Total price = ", pulp.value(gemstoneprob.objective))

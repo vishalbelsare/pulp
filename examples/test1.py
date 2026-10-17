@@ -9,12 +9,12 @@ prob = LpProblem("test1", LpMinimize)
 
 # Variables
 # 0 <= x <= 4
-x = LpVariable("x", 0, 4)
+x = prob.add_variable("x", 0, 4)
 # -1 <= y <= 1
-y = LpVariable("y", -1, 1)
+y = prob.add_variable("y", -1, 1)
 # 0 <= z
-z = LpVariable("z", 0)
-# Use None for +/- Infinity, i.e. z <= 0 -> LpVariable("z", None, 0)
+z = prob.add_variable("z", 0, None)
+# Use None for +/- Infinity, i.e. z <= 0 -> prob.add_variable("z", None, 0)
 
 # Objective
 prob += x + 4 * y + 9 * z, "obj"
@@ -30,7 +30,7 @@ prob += -y + z == 7, "c3"
 prob.writeLP("test1.lp")
 
 # Solve the problem using the default solver
-prob.solve()
+stats = prob.solve()
 # Use prob.solve(GLPK()) instead to choose GLPK as the solver
 # Use GLPK(msg = 0) to suppress GLPK messages
 # If GLPK is not in your path and you lack the pulpGLPK module,
@@ -42,7 +42,7 @@ prob.solve()
 # two paths may be provided (one to clp, one to cbc).
 
 # Print the status of the solved LP
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Print the value of the variables at the optimum
 for v in prob.variables():

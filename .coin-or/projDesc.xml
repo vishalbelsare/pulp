@@ -9,7 +9,7 @@
   to solve linear problems.
     </projectDescription>
     <projectShortDescription>A Python library for modeling linear and integer programs.</projectShortDescription>
-    <projectManager>Stuart Mitchell </projectManager>
+    <projectManager>Franco Peschiera </projectManager>
     <projectHomePage>https://github.com/coin-or/Pulp</projectHomePage>
     <projectLicense>MIT License</projectLicense>
     <projectLicenseURL>http://www.opensource.org/licenses/mit-license.php</projectLicenseURL>
@@ -33,19 +33,19 @@
       </platform>
       <platform>
         <operatingSystem>Microsoft Windows</operatingSystem>
-        <compiler>python 2.4</compiler>
+        <compiler>python 3.11</compiler>
       </platform>
       <platform>
         <operatingSystem>Linux</operatingSystem>
-        <compiler>python 2.6</compiler>
+        <compiler>python 3.11</compiler>
       </platform>
       <platform>
         <operatingSystem>Linux</operatingSystem>
-        <compiler>python 2.5</compiler>
+        <compiler>python 3.11</compiler>
       </platform>
       <platform>
         <operatingSystem>Linux</operatingSystem>
-        <compiler>python 2.4</compiler>
+        <compiler>python 3.11</compiler>
       </platform>
     </testedPlatforms>
     <projectCategories>

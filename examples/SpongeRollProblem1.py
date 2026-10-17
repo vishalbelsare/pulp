@@ -23,13 +23,13 @@ patterns = [[0, 2, 2], [1, 1, 0], [1, 0, 1]]  # A B C  # 5  # 7  # 9
 cost = 1
 
 # The pattern data is made into a dictionary
-patterns = makeDict([LenOpts, PatternNames], patterns, 0)
-
-# The problem variables of the number of each pattern to make are created
-vars = LpVariable.dicts("Patt", PatternNames, 0, None, LpInteger)
+patterns_dict = makeDict([LenOpts, PatternNames], patterns, 0)
 
 # The variable 'prob' is created
 prob = LpProblem("Cutting Stock Problem", LpMinimize)
+
+# The problem variables of the number of each pattern to make are created
+vars = prob.add_variable_dict("Patt", (PatternNames,), 0, None, LpInteger)
 
 # The objective function is entered: the total number of large rolls used * the fixed cost of each
 prob += lpSum([vars[i] * cost for i in PatternNames]), "Production Cost"
@@ -37,18 +37,18 @@ prob += lpSum([vars[i] * cost for i in PatternNames]), "Production Cost"
 # The demand minimum constraint is entered
 for i in LenOpts:
     prob += (
-        lpSum([vars[j] * patterns[i][j] for j in PatternNames]) >= rollDemand[i],
-        "Ensuring enough %s cm rolls" % i,
+        lpSum([vars[j] * patterns_dict[i][j] for j in PatternNames]) >= rollDemand[i],
+        f"Ensuring enough {i} cm rolls",
     )
 
 # The problem data is written to an .lp file
 prob.writeLP("SpongeRollProblem.lp")
 
 # The problem is solved using PuLP's choice of Solver
-prob.solve()
+stats = prob.solve()
 
 # The status of the solution is printed to the screen
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Each of the variables is printed with it's resolved optimum value
 for v in prob.variables():

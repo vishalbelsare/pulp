@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
-from matplotlib import rc
+from matplotlib import rc  # type: ignore[import-not-found]
 
 rc("text", usetex=True)
 rc("font", family="serif")
@@ -18,39 +17,39 @@ def plot_interval(a, c, x_left, x_right, i, fbound):
     text(
         (x_left + lh) / 2.0,
         0.1,
-        "freebound interval [%s, %s] is penalty-free" % (lh, rh),
+        f"freebound interval [{lh}, {rh}] is penalty-free",
     )
-    text((x_left + lh) / 2.0, 0.2, "rhs=%s,    %s" % (c, fbound))
+    text((x_left + lh) / 2.0, 0.2, f"rhs={c},    {fbound}")
     cur_ax = gca()
     cur_ax.add_patch(arrow_l)
     cur_ax.add_patch(arrow_r)
     axis([x_left, x_right, -0.1, 0.3])
     yticks([])
-    title("Elasticized constraint\_%s   $C(x)= %s $" % (i, c))
+    title(rf"Elasticized constraint\_{i}   $C(x)= {c} $")
 
 
-figure()
-subplots_adjust(hspace=0.5)
+figure()  # type: ignore[name-defined]
+subplots_adjust(hspace=0.5)  # type: ignore[name-defined]
 
 fbound = "proportionFreeBound"
 i = 1
-subplot(2, 1, i)
+subplot(2, 1, i)  # type: ignore[name-defined]
 a = [0.01, 0.01]
 c = 200
 x_left = 0.97 * c
 x_right = 1.03 * c
-fb_string = "%s%s = %s" % (fbound, "", a[0])
+fb_string = f"{fbound} = {a[0]}"
 plot_interval(a, c, x_left, x_right, i, fb_string)
 
 i += 1
-subplot(2, 1, i)
+subplot(2, 1, i)  # type: ignore[name-defined]
 a = [0.02, 0.05]
 c = 500
 x_left = 0.9 * c  # scale of window
 x_right = 1.2 * c  # scale of window
-fb_string = "%s%s = [%s,%s]" % (fbound, "List", a[0], a[1])
+fb_string = f"{fbound}List = [{a[0]},{a[1]}]"
 plot_interval(a, c, x_left, x_right, i, fb_string)
-savefig("freebound.jpg")
-savefig("freebound.pdf")
+savefig("freebound.jpg")  # type: ignore[name-defined]
+savefig("freebound.pdf")  # type: ignore[name-defined]
 
 # vim: fenc=utf-8: ft=python:sw=4:et:nu:fdm=indent:fdn=1:syn=python

@@ -1,13 +1,13 @@
 How to warm-start a solver
 ======================================
 
-Many solvers permit the possibility of giving a valid (or parcially valid in some cases) solution so the solver can start from that solution. This can lead to performance gains.
+Many solvers permit the possibility of giving a valid (or partially valid in some cases) solution so the solver can start from that solution. This can lead to performance gains.
 
 
 Supported solver APIs
 -----------------------
 
-The present solver APIs that work with PuLP warm-start are the following: ``CPLEX_CMD``, ``GUROBI_CMD``, ``PULP_CBC_CMD``, ``CBC_CMD``, ``CPLEX_PY``, ``GUROBI``.
+The present solver APIs that work with PuLP warm-start include: ``CPLEX_CMD``, ``GUROBI_CMD``, ``COIN_CMD`` (CBC), ``CPLEX_PY``, ``GUROBI``, ``XPRESS``, ``XPRESS_PY``.
 
 Example problem
 ----------------
@@ -46,7 +46,7 @@ For example, using the default PuLP solver we would do:
 
 .. code-block:: python
 
-    seating_model.solve(pulp.PULP_CBC_CMD(msg=True, warmStart=True))
+    seating_model.solve(pulp.COIN_CMD(msg=True, warmStart=True))
 
 I usually turn ``msg=True`` so I can see the messages from the solver confirming it loaded the solution correctly.
 

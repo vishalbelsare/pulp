@@ -6,11 +6,11 @@
 
 # With m>=4, these problems are often *very* difficult.
 
-# Import PuLP modeler functions
-from pulp import *
-
 # Import random number generation functions
 from random import *
+
+# Import PuLP modeler functions
+from pulp import *
 
 # A new LP problem
 prob = LpProblem("test5", LpMinimize)
@@ -25,11 +25,11 @@ D = 100
 n = 10 * (m - 1)
 
 # A vector of n binary variables
-x = LpVariable.matrix("x", list(range(n)), 0, 1, LpInteger)
+x = prob.add_variable_matrix("x", (list(range(n)),), 0, 1, LpInteger)
 
 # Slacks
-s = LpVariable.matrix("s", list(range(m)), 0)
-w = LpVariable.matrix("w", list(range(m)), 0)
+s = prob.add_variable_matrix("s", (list(range(m)),), 0, None, LpContinuous)
+w = prob.add_variable_matrix("w", (list(range(m)),), 0, None, LpContinuous)
 
 # Objective
 prob += lpSum(s) + lpSum(w)
@@ -40,10 +40,10 @@ for j in range(m):
     prob += lpDot(d[j], x) + s[j] - w[j] == lpSum(d[j]) / 2
 
 # Resolution
-prob.solve()
+stats = prob.solve()
 
 # Print the status of the solved LP
-print("Status:", LpStatus[prob.status])
+print("Status:", stats.status_str)
 
 # Print the value of the variables at the optimum
 for v in prob.variables():

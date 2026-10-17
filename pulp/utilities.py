@@ -1,20 +1,25 @@
 # Utility functions
-import itertools
+from __future__ import annotations
+
 import collections
+import itertools
+from itertools import combinations as combination
+from itertools import permutations as permutation
+from typing import Any, Iterator
 
 
-def resource_clock():
-    import resource
+def resource_clock() -> float:
+    import resource  # noqa: I001
 
     return resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime
 
 
-def isNumber(x):
+def isNumber(x: object) -> bool:
     """Returns true if x is an int or a float"""
     return isinstance(x, (int, float))
 
 
-def value(x):
+def value(x: Any) -> float | None:
     """Returns the value of the variable/expression x, or x if it is a number"""
     if isNumber(x):
         return x
@@ -22,7 +27,7 @@ def value(x):
         return x.value()
 
 
-def valueOrDefault(x):
+def valueOrDefault(x: Any) -> float:
     """Returns the value of the variable/expression x, or x if it is a number
     Variable without value (None) are affected a possible value (within their
     bounds)."""
@@ -32,55 +37,7 @@ def valueOrDefault(x):
         return x.valueOrDefault()
 
 
-def __combination(orgset, k):
-    """
-    fall back if probstat is not installed note it is GPL so cannot
-    be included
-    """
-    if k == 1:
-        for i in orgset:
-            yield (i,)
-    elif k > 1:
-        for i, x in enumerate(orgset):
-            # iterates though to near the end
-            for s in __combination(orgset[i + 1 :], k - 1):
-                yield (x,) + s
-
-
-try:  # python >= 3.4
-    from itertools import combinations as combination
-except ImportError:
-    try:  # python 2.7
-        from itertools import combination
-    except ImportError:  # pulp's
-        combination = __combination
-
-
-def __permutation(orgset, k):
-    """
-    fall back if probstat is not installed note it is GPL so cannot
-    be included
-    """
-    if k == 1:
-        for i in orgset:
-            yield (i,)
-    elif k > 1:
-        for i, x in enumerate(orgset):
-            # iterates though to near the end
-            for s in __permutation(orgset[:i] + orgset[i + 1 :], k - 1):
-                yield (x,) + s
-
-
-try:  # python >= 3.4
-    from itertools import permutations as permutation
-except ImportError:
-    try:  # python 2.7
-        from itertools import permutation
-    except ImportError:  # pulp's
-        permutation = __permutation
-
-
-def allpermutations(orgset, k):
+def allpermutations(orgset: list[Any], k: int) -> Iterator[tuple[Any, ...]]:
     """
     returns all permutations of orgset with up to k items
 
@@ -114,7 +71,7 @@ def allpermutations(orgset, k):
     return itertools.chain(*[permutation(orgset, i) for i in range(1, k + 1)])
 
 
-def allcombinations(orgset, k):
+def allcombinations(orgset: list[Any], k: int) -> Iterator[tuple[Any, ...]]:
     """
     returns all combinations of orgset with up to k items
 
@@ -142,7 +99,9 @@ def allcombinations(orgset, k):
     return itertools.chain(*[combination(orgset, i) for i in range(1, k + 1)])
 
 
-def makeDict(headers, array, default=None):
+def makeDict(
+    headers: list[list[Any]], array: list[Any], default: Any = None
+) -> dict[Any, Any]:
     """
     makes a list into a dictionary with the headings given in headings
     headers is a list of header lists
@@ -152,7 +111,9 @@ def makeDict(headers, array, default=None):
     return result
 
 
-def __makeDict(headers, array, default=None):
+def __makeDict(
+    headers: list[list[Any]], array: list[Any], default: Any = None
+) -> tuple[dict[Any, Any], Any]:
     # this is a recursive function so end the recursion as follows
     result = {}
     returndefaultvalue = None
@@ -163,7 +124,10 @@ def __makeDict(headers, array, default=None):
         for i, h in enumerate(headers[0]):
             result[h], defaultvalue = __makeDict(headers[1:], array[i], default)
     if default is not None:
-        f = lambda: defaultvalue
+
+        def f():
+            return defaultvalue
+
         defresult = collections.defaultdict(f)
         defresult.update(result)
         result = defresult
@@ -171,11 +135,11 @@ def __makeDict(headers, array, default=None):
     return result, returndefaultvalue
 
 
-def splitDict(data):
+def splitDict(data: dict[Any, list[Any]]) -> tuple[dict[Any, Any], ...]:
     """
     Split a dictionary with lists as the data, into smaller dictionaries
 
-    :param data: A dictionary with lists as the values
+    :param dict data: A dictionary with lists as the values
 
     :return: A tuple of dictionaries each containing the data separately,
             with the same dictionary keys
@@ -190,7 +154,9 @@ def splitDict(data):
     return tuple(output)
 
 
-def read_table(data, coerce_type, transpose=False):
+def read_table(
+    data: str, coerce_type: type, transpose: bool = False
+) -> dict[tuple[str, str], Any]:
     """
     Reads in data from a simple table and forces it to be a particular type
 
@@ -198,9 +164,9 @@ def read_table(data, coerce_type, transpose=False):
     simple script
     ::return: a dictionary of with the keys being a tuple of the strings
        in the first row and colum of the table
-    ::param data: the multiline string containing the table data
-    ::param coerce_type: the type that the table data is converted to
-    ::param transpose: reverses the data if needed
+    :param str data: the multiline string containing the table data
+    :param coerce_type: the type that the table data is converted to
+    :param bool transpose: reverses the data if needed
 
     Example:
     >>> table_data = '''
